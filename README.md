@@ -54,4 +54,18 @@ Is the given word a coset leader in its coset? That is, does it have the minimum
 
 Create a parity check matrix for the given generating set, by putting it in reduced row-echelon form `I_n|A` and returning `A_transpose|I_(m)`.
 
-*Not guaranteed to work!* What should this function do when the matrix can't be put into reduced row-echelon form?
+### `reduced_row_echelon_form(basis)`
+
+Put the given list of words (interpreted as a matrix) into reduced row-echelon form.
+
+### `codeword_matrix(words)`
+
+Returns a matrix whose rows are the given codewords.
+
+### `hamming_square_encode(word)`
+
+Encode `word` using Hamming's square code.
+
+### `hamming_square_decode(word)`
+
+Decode `word` using Hamming's square code.
