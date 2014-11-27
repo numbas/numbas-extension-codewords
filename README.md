@@ -68,4 +68,16 @@ Encode `word` using Hamming's square code.
 
 ### `hamming_square_decode(word)`
 
-Decode `word` using Hamming's square code.
+Decode (and correct up to one error in) `word` using Hamming's square code.
+
+### `hamming_encode(word)`
+
+Encode `word` using the general Hamming code.
+
+### `hamming_decode(word)`
+
+Decode (and correct up to one error in) `word` using the general Hamming code.
+
+### `make_error(word,n)`
+
+Introduce an error in digit `n` of `word` - return a word which differs in that digit.
