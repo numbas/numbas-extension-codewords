@@ -52,7 +52,7 @@ Is the given word a coset leader in its coset? That is, does it have the minimum
 
 ### `parity_check_matrix(basis)`
 
-Create a parity check matrix for the given generating set, by putting it in reduced row-echelon form `I_n|A` and returning `A_transpose|I_(m)`.
+Create a parity check matrix for the given generating set, by putting it in reduced row-echelon form `I_n|A` and returning `-A_transpose|I_(m)`.
 
 ### `reduced_row_echelon_form(basis)`
 
