@@ -180,7 +180,7 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 
 	var sort_by_weight = keysort(function(w){return w.weight()});
 
-	function zero(n,field_size) {
+	var zero_word = codewords.zero_word = function(n,field_size) {
 		var digits = [];
 		for(var i=0;i<n;i++) {
 			digits.push(0);
@@ -218,7 +218,7 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		var field_size = basis[0].field_size;
 		var choices = allwords(basis.length,field_size);
 		generated = choices.map(function(choice) {
-			var r = zero(length,field_size);
+			var r = zero_word(length,field_size);
 			choice.digits.map(function(f,i) {
 				r = r.add(basis[i].scale(f));
 			});
@@ -236,7 +236,7 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		var field_size = words[0].field_size;
 		var word_length = words[0].length;
 		var num_combinations = Math.pow(words.length,field_size);
-		var z = zero(word_length,field_size);
+		var z = zero_word(word_length,field_size);
 		console.log(num_combinations);
 		for(var i=1;i<num_combinations;i++) {
 			coefficients[0] += 1;
@@ -750,6 +750,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 	codewords.scope.addFunction(new funcObj('codeword',[TList,TNum],TCodeword,function(digits,field_size) {
 		digits = digits.map(function(i){ return i.value; });
 		return new Codeword(digits,field_size) ;
+	}));
+
+	codewords.scope.addFunction(new funcObj('zero',[TNum,TNum],TCodeword,function(word_length,field_size) {
+		return zero_word(word_length,field_size);
 	}));
 
 	codewords.scope.addFunction(new funcObj('+',[TCodeword,TCodeword],TCodeword,function(w1,w2) {
