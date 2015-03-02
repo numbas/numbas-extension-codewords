@@ -33,6 +33,16 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		toString: function() {
 			return this.asString;
 		},
+		toLaTeX: function() {
+			return '\\mathtt{'+this.asString+'}';
+		},
+		toJME: function() {
+			return 'codeword("'+this.asString+'",'+this.field_size+')';
+		},
+		eq: function(b) {
+			var a = this; 
+			return a.field_size==b.field_size && a.length==b.length && a+''==b+''; 
+		},
 		add: function(w2) {
 			var field_size = this.field_size;
 			var digits = this.digits.map(function(d1,i) {
@@ -71,6 +81,88 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		},
 		weight: function() {
 			return this.digits.reduce(function(a,b){return a+(b>0?1:0)},0);
+		},
+
+		LaTeX_check_array: function() {
+			var n = Math.sqrt(this.length);
+
+			var out = '\\begin{array}{';
+			for(var i=0;i<n-1;i++) {
+				out += 'c';
+			}
+			out += '|c}\n';
+
+			for(var i=0;i<n-1;i++) {
+				out+=this.digits.slice(i*n,(i+1)*n).join(' & ')+' \\\\\n';
+			}
+			out += '\\hline\n';
+			out += this.digits.slice((n-1)*n).join(' & ')+'\n';
+
+			out += '\\end{array}';
+
+			return out;
+		},
+
+		hamming_ball: function(radius) {
+			var field_size = this.field_size;
+			function ball(digits,radius) {
+				if(radius==0) {
+					return [digits.slice()];
+				}
+				if(digits.length==1) {
+					var o = [];
+					for(var i=0;i<field_size;i++) {
+						o.push([i]);
+					}
+					return o;
+				}
+				var out = [];
+				// for each choice of the first digit
+				for(var i=0;i<field_size;i++) {
+					var next_digits = ball(digits.slice(1),i==digits[0] ? radius : radius-1);
+					out = out.concat(next_digits.map(function(d) {
+						d.splice(0,0,i);
+						return d;
+					}));
+				}
+				return out;
+			}
+
+			return ball(this.digits,radius).map(function(digits){ return new Codeword(digits,field_size) });
+		},
+
+		hamming_sphere: function(radius) {
+			var field_size = this.field_size;
+			function ball(digits,radius) {
+				if(radius==0) {
+					return [digits.slice()];
+				}
+				if(digits.length==1) {
+					if(radius==1) {
+						var o = [];
+						for(var i=0;i<field_size;i++) {
+							if(i!=digits[0]) {
+								o.push([i]);
+							}
+						}
+						return o;
+					} else {
+						return [];
+					}
+				}
+				var out = [];
+				// for each choice of the first digit
+				for(var i=0;i<field_size;i++) {
+					var next_digits = ball(digits.slice(1),i==digits[0] ? radius : radius-1);
+					out = out.concat(next_digits.map(function(d) {
+						d.splice(0,0,i);
+						return d;
+					}));
+				}
+				return out;
+			}
+
+			return ball(this.digits,radius).map(function(digits){ return new Codeword(digits,field_size) });
 		}
 	}
 
@@ -84,7 +176,7 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		b = b+'';
 		return a>b ? 1 : a<b ? -1 : 0 
 	};
-	Codeword.eq = function(a,b){ return a.field_size==b.field_size && a.length==b.length && a+''==b+''; };
+	Codeword.eq = function(a,b) { return a.eq(b); }
 
 	var sort_by_weight = keysort(function(w){return w.weight()});
 
@@ -108,6 +200,14 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			l = nl;
 		}
 		return l.map(function(w){ return Codeword.fromString(w,field_size) });
+	}
+
+	var random_word = codewords.random_word = function(n,field_size) {
+		var digits = [];
+		for(var i=0;i<n;i++) {
+			digits.push(Numbas.math.randomint(field_size));
+		}
+		return new Codeword(digits,field_size);
 	}
 
 	var set_generated_by = codewords.set_generated_by = function(basis) {
@@ -166,6 +266,19 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		var coset = coset_containing(word,basis);
 		coset.sort(sort_by_weight);
 		return word.weight()==coset[0].weight();
+	}
+
+	var hamming_distance = codewords.hamming_distance = function(a,b) {
+		if(a.length!=b.length) {
+			return;
+		}
+		var d = 0;
+		for(var i=0;i<a.length;i++) {
+			if(a.digits[i]!=b.digits[i]) {
+				d += 1;
+			}
+		}
+		return d;
 	}
 
 	// swap the ith and jth positions in array a
@@ -292,66 +405,77 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return m;
 	}
 
-	codewords.hamming_square_encode = function(word) {
-		var n = Math.sqrt(word.length);
-
-		var column_sums = [];
+	codewords.hamming_square_encode = function(words) {
+		var n = 2;
 		var out = [];
-		var total = 0;
-		for(var i=0;i<n;i++) {
-			var row_sum = 0;
-			var column_sum = 0;
-			for(var j=0;j<n;j++) {
-				row_sum += word.digits[n*i+j];
-				column_sum += word.digits[n*j+i];
-				out.push(word.digits[n*i+j]);
+		for(var start=0;start<words.length;start+=n*n) {
+			var word = words.digits.slice(start,start+n*n);
+			var column_sums = [];
+			var total = 0;
+			for(var i=0;i<n;i++) {
+				var row_sum = 0;
+				var column_sum = 0;
+				for(var j=0;j<n;j++) {
+					row_sum += word[n*i+j];
+					column_sum += word[n*j+i];
+					out.push(word[n*i+j]);
+				}
+				out.push(row_sum % 2);
+				total += row_sum;
+				column_sums.push(column_sum % 2);
 			}
-			out.push(row_sum % 2);
-			total += row_sum;
-			column_sums.push(column_sum % 2);
+			out = out.concat(column_sums);
+			out.push(total % 2);
 		}
-		out = out.concat(column_sums);
-		out.push(total % 2);
 		return new Codeword(out,2);
 	}
 
-	codewords.hamming_square_decode = function(word) {
-		var n = Math.sqrt(word.length);
-
-		var rows = [];
-		for(var i=0;i<n;i++) {
-			rows.push(word.digits.slice(n*i,(n+1)*i));
-		}
-		var row_errors = [];
-		var column_errors = [];
-		for(var i=0;i<n-1;i++) {
-			var row_sum = 0;
-			var column_sum = 0;
-			for(var j=0;j<n-1;j++) {
-				row_sum += word.digits[n*i+j];
-				column_sum += word.digits[n*j+i];
-			}
-			row_errors.push(row_sum % 2 != word.digits[n*i+n-1]);
-			column_errors.push(column_sum % 2 != word.digits[n*(n-1)+i]);
-		}
+	codewords.hamming_square_decode = function(words) {
+		var n = 3;
 		var out = [];
-		console.log(row_errors);
-		console.log(column_errors);
-		for(var i=0;i<n-1;i++) {
-			for(var j=0;j<n-1;j++) {
-				var c = word.digits[n*i+j];
-				if(row_errors[i] && column_errors[j]) {
-					c = 1-c;
+		for(var start=0;start<words.length;start+=n*n) {
+			var word = words.digits.slice(start,start+n*n);
+
+			var row_errors = [];
+			var column_errors = [];
+			for(var i=0;i<n-1;i++) {
+				var row_sum = 0;
+				var column_sum = 0;
+				for(var j=0;j<n-1;j++) {
+					row_sum += word[n*i+j];
+					column_sum += word[n*j+i];
 				}
-				out.push(c);
+				row_errors.push(row_sum % 2 != word[n*i+n-1]);
+				column_errors.push(column_sum % 2 != word[n*(n-1)+i]);
+			}
+
+			for(var i=0;i<n-1;i++) {
+				for(var j=0;j<n-1;j++) {
+					var c = word[n*i+j];
+					if(row_errors[i] && column_errors[j]) {
+						c = 1-c;
+					}
+					out.push(c);
+				}
 			}
 		}
 		return new Codeword(out,2);
 	};
 
+	// integer log_2
+	function log2(n) {
+		var i = 1;
+		var p = 0;
+		while(i<=n) {
+			i*=2;
+			p += 1;
+		}
+		return p-1;
+	}
+
 	codewords.hamming_encode = function(word) {
 		var word_length = word.length;
-		var pow = Math.ceil(Math.log2(word_length))+1;
+		var pow = Math.ceil(log2(word_length))+1;
 		var powers_of_two = [];
 		var p = 1;
 		var out = [];
@@ -379,7 +503,7 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 
 	codewords.hamming_decode = function(word) {
 		var word_length = word.length;
-		var pow = Math.ceil(Math.log2(word_length));
+		var pow = Math.ceil(log2(word_length));
 		var powers_of_two = [];
 		var check_digits = [];
 		var digits = word.digits.slice();
@@ -421,6 +545,142 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 	}
 
 
+	var Code = codewords.Code = function(words) {
+		this.words = words;
+		this.length = this.words.length;
+		this.word_length = this.length>0 ? this.words[0].length : 0;
+		this.field_size = this.length>0 ? this.words[0].field_size : 0;
+	}
+	Code.prototype = {
+		toString: function() {
+			return '{'+this.words.map(function(word){return word+''}).join(', ')+'}';
+		},
+		toLaTeX: function() {
+			return '\\{'+this.words.map(function(word){return word.toLaTeX()}).join(', ')+'\\}';
+		},
+		toJME: function() {
+			return 'code('+this.words.map(function(word){return word.toJME()}).join(', ')+')';
+		},
+
+		/** Do this and b have exactly the same words?
+		 */
+		eq: function(b) {
+			if(this.length!=b.length || this.field_size!=b.field_size) {
+				return false;
+			}
+			var a_words = this.words.slice();
+			var b_words = b.words.slice();
+			function compare_words(a,b) {
+				a=a.toString();
+				b=b.toString(); 
+				return a<b ? -1 : a>b ? 1 : 0;
+			}
+			a_words.sort(compare_words);
+			b_words.sort(compare_words);
+			for(var i=0;i<this.length;i++) {
+				if(!a_words[i].eq(b_words[i])) {
+					return false;
+				}
+			}
+			return true;
+		},
+
+		/** This is equivalent to b if we can get to b by positional or symbolic permutations
+		 */
+		equivalent: function(b) {
+			if(this.length!=b.length || this.field_size!=b.field_size) {
+				return false;
+			}
+			var positions = [];
+			for(var i=0;i<this.word_length;i++) {
+				positions.push(i);
+			}
+			var symbols = [];
+			for(var i=0;i<this.field_size;i++) {
+				symbols.push(i);
+			}
+			var positional_permutations = Numbas.util.permutations(positions);
+			var symbolic_permutations = Numbas.util.permutations(symbols);
+
+			for(var i=0;i<positional_permutations.length;i++) {
+				for(var j=0;j<symbolic_permutations.length;j++) {
+					var c = this.positional_permutation(positional_permutations[i]).symbolic_permutation(symbolic_permutations[j]);
+					if(c.eq(b)) {
+						return true;
+					}
+				}
+			}
+			return false;
+		},
+
+		minimum_distance: function() {
+			if(this.length==0) {
+				return 0;
+			}
+			var min;
+			for(var i=0;i<this.length;i++) {
+				for(var j=i+1;j<this.length;j++) {
+					var d = hamming_distance(this.words[i],this.words[j]);
+					if(min===undefined || d<min) {
+						min = d;
+					}
+				}
+			}
+			return min;
+		},
+
+		information_rate: function() {
+			if(this.words.length==0) {
+				return 0;
+			}
+			return Math.log(this.length)/Math.log(2)/this.words[0].length;
+		},
+
+		positional_permutation: function(order) {
+			var words = this.words.map(function(word) {
+				var digits = [];
+				for(var i=0;i<order.length;i++) {
+					digits.push(word.digits[order[i]]);
+				}
+				return new Codeword(digits,word.field_size);
+			});
+
+			return new Code(words,this.field_size);
+		},
+
+		symbolic_permutation: function(symbols) {
+			var words = this.words.map(function(word) {
+				var digits = word.digits.map(function(d) {
+					return symbols[d];
+				});
+				return new Codeword(digits,word.field_size);
+			});
+
+			return new Code(words,this.field_size);
+		}
+	};
+
+	codewords.hamming_bound = function(field_size,word_length,errors_corrected) {
+		var sum = 0;
+		for(var k=0;k<=errors_corrected;k++) {
+			sum += Numbas.math.combinations(word_length,k)*Math.pow(field_size-1,k);
+		}
+		return Math.floor(Math.pow(field_size,word_length)/sum);
+	}
+
+	codewords.singleton_bound = function(field_size,word_length,minimum_distance) {
+		return Math.pow(field_size,word_length-minimum_distance+1);
+	}
+
+	codewords.gilbert_varshamov_bound = function(field_size,word_length,minimum_distance) {
+		var sum = 0;
+		for(var i=0;i<minimum_distance;i++) {
+			sum += Numbas.math.combinations(word_length,i)*Math.pow(field_size-1,i);
+		}
+		return Math.ceil(Math.pow(field_size,word_length)/sum);
+	}
+
+
 	/// JME stuff
 	if(Numbas.jme) {
 	
@@ -430,11 +690,24 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 	TCodeword.prototype.type = 'codeword';
 
 	Numbas.jme.display.typeToTeX.codeword = function(thing,tok,texArgs,settings) {
-		return tok.value+'';
+		return tok.value.toLaTeX();
 	};
 
 	Numbas.jme.display.typeToJME.codeword = function(tree,tok,bits,settings) {
-		return tok.value+'';
+		return tok.value.toJME();
+	}
+
+	var TCode = Numbas.jme.types.code = Numbas.jme.types.TCode = function(code) {
+		this.value = code;
+	}
+	TCode.prototype.type = 'code';
+
+	Numbas.jme.display.typeToTeX.code = function(thing,tok,texArgs,settings) {
+		return tok.value.toLaTeX();
+	};
+
+	Numbas.jme.display.typeToJME.code = function(tree,tok,bits,settings) {
+		return tok.value.toJME();
 	}
 
 	var funcObj = Numbas.jme.funcObj;
@@ -484,6 +757,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 	codewords.scope.addFunction(new funcObj('allwords',[TNum,TNum],TList,function(n,field_size) {
 		var words = codewords.allwords(n,field_size).map(function(c){return new TCodeword(c)});
 		return words;
+	}));
+
+	codewords.scope.addFunction(new funcObj('random_word',[TNum,TNum],TCodeword,function(n,field_size) {
+		return random_word(n,field_size);
 	}));
 
 	codewords.scope.addFunction(new funcObj('set_generated_by',[TList],TList,function(basis) {
@@ -538,7 +815,35 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return codewords.hamming_decode(word);
 	}));
 
-	codewords.scope.addFunction(new funcObj('make_error',[TCodeword,TNum],TCodeword,function(word,digit) {
+	codewords.scope.addFunction(new funcObj('hamming_distance',[TCodeword,TCodeword],TNum,function(a,b) {
+		return hamming_distance(a,b);
+	}));
+
+	codewords.scope.addFunction(new funcObj('hamming_ball',[TCodeword,TNum],TList,function(base_word,radius) {
+		var words = base_word.hamming_ball(radius);
+		return words.map(function(word){ return new TCodeword(word); });
+	}));
+
+	codewords.scope.addFunction(new funcObj('hamming_sphere',[TCodeword,TNum],TList,function(base_word,radius) {
+		var words = base_word.hamming_sphere(radius);
+		return words.map(function(word){ return new TCodeword(word); });
+	}));
+
+	codewords.scope.addFunction(new funcObj('concat',[TList],TCodeword,function(words) {
+		var digits = [];
+		var field_size = 2;
+		words.map(function(word) {
+			digits = digits.concat(word.value.digits);
+			field_size = Math.max(field_size,word.value.field_size);
+		});
+		return new Codeword(digits,field_size);
+	}));
+
+	codewords.scope.addFunction(new funcObj('abs',[TCodeword],TNum,function(word) {
+		return word.length;
+	}));
+
+	codewords.scope.addFunction(new funcObj('error',[TCodeword,TNum],TCodeword,function(word,digit) {
 		var digits = word.digits.slice();
 		var d = Numbas.math.randomint(word.field_size-1);
 		if(d>=digits[digit]) {
@@ -547,6 +852,64 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		digits[digit] = d;
 		return new Codeword(digits,word.field_size);
 	}));
+
+	codewords.scope.addFunction(new funcObj('check_array',[TCodeword],TString,function(word) {
+		return word.LaTeX_check_array();
+	}));
+
+	codewords.scope.addFunction(new funcObj('string',[TCodeword],TString,function(word) {
+		return word.toString();
+	}));
+
+	codewords.scope.addFunction(new funcObj('code',[TList],TCode,function(words) {
+		return new Code(words.map(function(tword){return tword.value}));
+	}));
+
+	codewords.scope.addFunction(new funcObj('minimum_distance',[TCode],TNum,function(code) {
+		return code.minimum_distance();
+	}));
+
+	codewords.scope.addFunction(new funcObj('information_rate',[TCode],TNum,function(code) {
+		return code.information_rate();
+	}));
+
+	codewords.scope.addFunction(new funcObj('abs',[TCode],TNum,function(code) {
+		return word.length;
+	}));
+
+	codewords.scope.addFunction(new funcObj('listval',[TCode,TNum],TCodeword,function(code,i) {
+		return code.words[i];
+	}));
+	codewords.scope.addFunction(new funcObj('listval',[TCode,TRange],TList,function(code,range) {
+		return code.words.slice(range[0],range[1]).map(function(w){return new TCodeword(w)});
+	}));
+
+	codewords.scope.addFunction(new funcObj('positional_permutation',[TCode,TList],TCode,function(code,order) {
+		return code.positional_permutation(order);
+	},{unwrapValues:true}));
+
+	codewords.scope.addFunction(new funcObj('symbolic_permutation',[TCode,TList],TCode,function(code,order) {
+		return code.symbolic_permutation(order);
+	},{unwrapValues:true}));
+
+	codewords.scope.addFunction(new funcObj('equivalent',[TCode,TCode],TBool,function(a,b) {
+		return a.equivalent(b);
+	}));
+
+	codewords.scope.addFunction(new funcObj('hamming_bound',[TNum,TNum,TNum],TNum,codewords.hamming_bound));
+
+	codewords.scope.addFunction(new funcObj('singleton_bound',[TNum,TNum,TNum],TNum,codewords.singleton_bound));
+
+	codewords.scope.addFunction(new funcObj('gilbert_varshamov_bound',[TNum,TNum,TNum],TNum,codewords.gilbert_varshamov_bound));
+
+	}
+
+	Numbas.util.equalityTests.codeword = function(a,b) {
+		return a.value.eq(b.value);
+	}
+
+	Numbas.util.equalityTests.code = function(a,b) {
+		return a.value.eq(b.value);
 	}
 
 	///////// demo
@@ -569,5 +932,11 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 	var sleppian = sleppian_array(basis);
 	console.log('sleppian array');
 	console.log(sleppian.map(function(cs){return cs.join(',');}).join('\n'));
+
+	var a = scope.evaluate('code(shuffle(allwords(4,2))[0..3])').value;
+	var b = a.positional_permutation(Numbas.math.deal(4)).symbolic_permutation(Numbas.math.deal(2));
+	console.log('a '+a);
+	console.log('b '+b);
+	console.log(a.equivalent(b));
 	*/
 });

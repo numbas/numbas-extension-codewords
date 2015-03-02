@@ -20,15 +20,27 @@ Add two codewords.
 
 ### `word1-word2`
 
-Subtract one codeword from another
+Subtract one codeword from another.
 
 ### `n*word` or `word*n`
 
-Multiply a codeword by a scalar
+Multiply a codeword by a scalar.
+
+### `word[n]`
+
+nth digit of codeword.
+
+### `word[m..n]`
+
+List of mth to nth digits of codeword.
 
 ### `allwords(word_length,field_size)`
 
 Generate a list of all codewords of given length in Z_{field_size}.
+
+### `random_word(word_length,field_size)`
+
+Pick a random word of given length in Z_{field_size}.
 
 ### `set_generated_by(basis)`
 
@@ -78,6 +90,82 @@ Encode `word` using the general Hamming code.
 
 Decode (and correct up to one error in) `word` using the general Hamming code.
 
-### `make_error(word,n)`
+### `hamming_distance(word1,word2)`
 
-Introduce an error in digit `n` of `word` - return a word which differs in that digit.
+Hamming distance between two codewords.
+
+### `hamming_ball(word,radius)`
+
+All words within given Hamming distance of the given codeword.
+
+### `hamming_sphere(word,radius)`
+
+All words at given Hamming distance from the given codeword.
+
+### `concat([words])`
+
+Concatenate a list of codewords into one codeword.
+
+### `len(word)`
+
+Length of a codeword.
+
+### `error(word,position)`
+
+Introduce an error (change a digit) at the given position. Returns a new codeword.
+
+### `check_array(word)`
+
+Returns a LaTeX check-array for the given word, from a Hamming square code.
+
+### `string(word)`
+
+String representation of a codeword.
+
+### `code([words])`
+
+Create a code form a complete set of codewords.
+
+### `minimum_distance(code)`
+
+Minimum Hamming distance between words in code.
+
+### `information_rate(code)`
+
+A code's information rate
+
+### `len(code)`
+
+Number of words in code.
+
+### `code[n]`
+
+nth word in code.
+
+### `code[m..n]`
+
+List of the mth to nth words in code.
+
+### `positional_permutation(code,positions)`
+
+Permute the positions of the digits in code's words, following the given order.
+
+### `symbolic_permutation(code,symbols)`
+
+Permute the symbols in code's words, following the given order.
+
+### `equivalent(code1,code2)`
+
+Can code2 be obtained from code1 by a combination of positional and symbolic permutations?
+
+### `hamming_bound(field_size,word_length,errors_corrected)`
+
+Hamming bound on the maximum number of codewords in a code with the given parameters.
+
+### `singleton_bound(field_size,word_length,minimum_distance)`
+
+Singleton bound on the maximum number of codewords in a code with the given parameters.
+
+### gilbert_varshamov_bound(field_size,word_length,minimum_distance)`
+
+Gilbert-Varshamov bound on the minimum number of codewords in a code with the given parameters.
