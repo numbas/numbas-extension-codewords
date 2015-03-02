@@ -377,9 +377,9 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 
 		var current_row = 0;
 		// for each column, there should be at most one row with a 1 in that column, and every other row should have 0 in that column
-		for(var leader_column=0;leader_column<columns && leader_column<rows;leader_column++) {
+		for(var leader_column=0;leader_column<columns;leader_column++) {
 			// find the first row with a non-zero in that column
-			for(var row=leader_column;row<rows;row++) {
+			for(var row=current_row;row<rows;row++) {
 				if(matrix[row].digits[leader_column]!=0) {
 					break;
 				}
