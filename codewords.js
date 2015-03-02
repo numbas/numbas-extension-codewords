@@ -874,7 +874,7 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 	}));
 
 	codewords.scope.addFunction(new funcObj('abs',[TCode],TNum,function(code) {
-		return word.length;
+		return code.length;
 	}));
 
 	codewords.scope.addFunction(new funcObj('listval',[TCode,TNum],TCodeword,function(code,i) {
