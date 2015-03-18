@@ -166,6 +166,6 @@ Hamming bound on the maximum number of codewords in a code with the given parame
 
 Singleton bound on the maximum number of codewords in a code with the given parameters.
 
-### gilbert_varshamov_bound(field_size,word_length,minimum_distance)`
+### `gilbert_varshamov_bound(field_size,word_length,minimum_distance)`
 
 Gilbert-Varshamov bound on the minimum number of codewords in a code with the given parameters.
