@@ -54,9 +54,9 @@ Are the given codewords linearly independent? (it checks that the set generated 
 
 Generate the coset containing the given word, with respect to the given generating set.
 
-### `sleppian_array(basis)`
+### `slepian_array(basis)`
 
-Generate the Sleppian array corresponding to the given basis set. Each row in the result is a coset, sorted by weight.
+Generate the Slepian array corresponding to the given basis set. Each row in the result is a coset, sorted by weight.
 
 ### `is_coset_leader(word,basis)`
 
