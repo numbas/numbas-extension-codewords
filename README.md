@@ -8,7 +8,7 @@ JME functions
 
 ### `codeword(digits,field_size)`
 
-Create a codeword from a list of digits, in Z_{field_size}. For example, `codeword([1,1,0,1],2)`
+Create a codeword from a list or vector of digits, in Z_{field_size}. For example, `codeword([1,1,0,1],2)`
 
 ### `codeword(word_string,field_size)`
 

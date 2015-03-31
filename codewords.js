@@ -39,6 +39,14 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		toJME: function() {
 			return 'codeword("'+this.asString+'",'+this.field_size+')';
 		},
+		isZero: function() {
+			for(var i=0;i<this.length;i++) {
+				if(this.digits[i]!==0) {
+					return false;
+				}
+			}
+			return true;
+		},
 		eq: function(b) {
 			var a = this; 
 			return a.field_size==b.field_size && a.length==b.length && a+''==b+''; 
@@ -235,15 +243,16 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		}
 		var field_size = words[0].field_size;
 		var word_length = words[0].length;
-		var num_combinations = Math.pow(words.length,field_size);
+		var num_combinations = Math.pow(field_size,words.length);
 		var z = zero_word(word_length,field_size);
-		console.log(num_combinations);
 		for(var i=1;i<num_combinations;i++) {
 			coefficients[0] += 1;
 			var j = 0;
 			while(coefficients[j]==field_size) {
 				coefficients[j] = 0;
-				coefficients[j+1] += 1;
+				if(j<words.length-1) {
+					coefficients[j+1] += 1;
+				}
 				j+=1;
 			}
 
@@ -278,6 +287,11 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		var sets = [base];
 		var seen = base.map(function(w){return w+''});
 		var all = allwords(length,field_size);
+		all.sort(function(r1,r2) {
+			var a = r1+'';
+			var b = r2+'';
+			return a>b ? 1 : a<b ? -1 : 0;
+		})
 		all.map(function(w) {
 			if(seen.indexOf(w+'')==-1) {
 				var cs = coset_containing(w,basis);
@@ -408,6 +422,13 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			}
 		}
 		
+		return matrix;
+	}
+
+	/* Generator matrix for the given words */
+	var generator_matrix = codewords.generator_matrix = function(words) {
+		var matrix = reduced_row_echelon_form(words);
+		matrix = matrix.filter(function(w){return !w.isZero()});
 		return matrix;
 	}
 
@@ -570,6 +591,19 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return new Codeword(out,2);
 	}
 
+	/* pcm is a parity check matrix for the code, given as a list of codewords */
+	var syndrome = codewords.syndrome = function(word,pcm) {
+		var word_length = word.length;
+		var field_size = word.field_size;
+		var digits = pcm.map(function(row) {
+			var t = 0;
+			for(var i=0;i<word_length;i++) {
+				t += word.digits[i]*row.digits[i];
+			}
+			return Numbas.math.mod(t,field_size);
+		});
+		return new Codeword(digits,field_size);
+	}
 
 	var Code = codewords.Code = function(words) {
 		this.words = words;
@@ -609,6 +643,15 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 				}
 			}
 			return true;
+		},
+
+		contains: function(w) {
+			for(var i=0;i<this.length;i++) {
+				if(this.words[i].eq(w)) {
+					return true;
+				}
+			}
+			return false;
 		},
 
 		/** This is equivalent to b if we can get to b by positional or symbolic permutations
@@ -743,12 +786,16 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 	var TBool = Numbas.jme.types.TBool;
 	var TMatrix = Numbas.jme.types.TMatrix;
 	var TRange = Numbas.jme.types.TRange;
+	var TVector = Numbas.jme.types.TVector;
 
 	codewords.scope.addFunction(new funcObj('codeword',[TString,TNum],TCodeword,function(word,field_size) {
 		return Codeword.fromString(word,field_size) ;
 	}));
 	codewords.scope.addFunction(new funcObj('codeword',[TList,TNum],TCodeword,function(digits,field_size) {
 		digits = digits.map(function(i){ return i.value; });
+		return new Codeword(digits,field_size) ;
+	}));
+	codewords.scope.addFunction(new funcObj('codeword',[TVector,TNum],TCodeword,function(digits,field_size) {
 		return new Codeword(digits,field_size) ;
 	}));
 
@@ -814,9 +861,18 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return codewords.is_coset_leader(word,basis);
 	},{unwrapValues: true}));
 
+	codewords.scope.addFunction(new funcObj('generator_matrix',[TList],TList,function(basis) {
+		return codewords.generator_matrix(basis).map(function(c){return new TCodeword(c)});
+	},{unwrapValues: true}));
+
 	codewords.scope.addFunction(new funcObj('parity_check_matrix',[TList],TList,function(basis) {
 		return codewords.parity_check_matrix(basis).map(function(c){return new TCodeword(c)});
 	},{unwrapValues: true}));
+
+	codewords.scope.addFunction(new funcObj('syndrome',[TCodeword,TList],TCodeword,function(word,pcm) {
+		pcm = pcm.map(function(i){ return i.value; });
+		return codewords.syndrome(word,pcm);
+	}));
 
 	codewords.scope.addFunction(new funcObj('reduced_row_echelon_form',[TList],TList,function(basis) {
 		return codewords.reduced_row_echelon_form(basis).map(function(c){return new TCodeword(c)});
@@ -891,8 +947,16 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return word.toString();
 	}));
 
+	codewords.scope.addFunction(new funcObj('latex',[TCodeword],TString,function(word) {
+		return word.toLaTeX();
+	},{latex:true}));
+
 	codewords.scope.addFunction(new funcObj('code',[TList],TCode,function(words) {
 		return new Code(words.map(function(tword){return tword.value}));
+	}));
+
+	codewords.scope.addFunction(new funcObj('allwords',[TCode],TList,function(code) {
+		return code.words.map(function(w){return new TCodeword(w)});
 	}));
 
 	codewords.scope.addFunction(new funcObj('minimum_distance',[TCode],TNum,function(code) {
@@ -940,6 +1004,32 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 
 	Numbas.util.equalityTests.code = function(a,b) {
 		return a.value.eq(b.value);
+	}
+
+
+	/** Marking functions **/
+	codewords.mark_codeword_set = function(part,field_size,fn) {
+		var re_word = '[0-'+(field_size-1)+']+';
+		var re_words = new RegExp('^\\s*'+re_word+'(?:\\s*,\\s*'+re_word+')*$');
+		if(!re_words.test(part.studentAnswer)) {
+			part.answered = false;
+			part.invalid = true;
+			part.markingComment("Your answer is not valid.");
+		} else {
+			part.invalid = false;
+			var words = part.studentAnswer.split(/\s*,\s*/);
+			words = words.map(function(s) {
+				return Codeword.fromString(s.trim(),field_size);
+			});
+			fn.apply(part,[words]);
+		}
+	}
+	codewords.validate_codeword_set = function(part) {
+		if(part.invalid) {
+			part.giveWarning('Your answer is not a list of valid codewords separated by commas.');
+			return false;
+		}
+		return true;
 	}
 
 	///////// demo
