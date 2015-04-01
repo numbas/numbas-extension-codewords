@@ -290,7 +290,9 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		all.sort(function(r1,r2) {
 			var a = r1+'';
 			var b = r2+'';
-			return a>b ? 1 : a<b ? -1 : 0;
+			var w1 = r1.weight();
+			var w2 = r2.weight();
+			return w1>w2 ? 1 : w1<w2 ? -1 : a>b ? 1 : a<b ? -1 : 0;
 		})
 		all.map(function(w) {
 			if(seen.indexOf(w+'')==-1) {
