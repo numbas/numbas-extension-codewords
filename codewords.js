@@ -1031,6 +1031,9 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			part.giveWarning('Your answer is not a list of valid codewords separated by commas.');
 			return false;
 		}
+		if(!part.studentAnswer.trim()) {
+			return false;
+		}
 		return true;
 	}
 
