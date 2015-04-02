@@ -34,6 +34,10 @@ nth digit of codeword.
 
 List of mth to nth digits of codeword.
 
+### `weight(w)`
+
+Hamming weight of the word.
+
 ### `allwords(word_length,field_size)`
 
 Generate a list of all codewords of given length in Z_{field_size}.
