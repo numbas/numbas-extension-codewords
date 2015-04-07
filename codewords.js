@@ -218,6 +218,18 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return new Codeword(digits,field_size);
 	}
 
+	// random linear combination of the given words
+	var random_combination = codewords.random_combination = function(basis) {
+		var field_size = basis[0].field_size;
+		var word_length = basis[0].length;
+		var t = zero_word(word_length,field_size);
+
+		for(var i=0;i<basis.length;i++) {
+			t = t.add(basis[i].scale(Numbas.math.randomint(field_size)));
+		}
+		return t;
+	}
+
 	var set_generated_by = codewords.set_generated_by = function(basis) {
 		if(!basis.length) {
 			return [];
@@ -694,6 +706,35 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return out;
 	}
 
+	/* Generating matrix for the p-ary Hamming code whose PCM has r rows */
+	var hamming_generating_matrix = codewords.hamming_generating_matrix = function(p,r) {
+		// Generate the parity-check matrix
+		var pcm = hamming_parity_check_matrix(p,r);
+
+		function swap_digits(row) {
+			var digits = row.digits.slice();
+			var off = 1;
+			var t = 1;
+			for(var i=1;i<r;i++) {
+				var b = digits[i];
+				digits[i] = digits[off];
+				digits[off] = b;
+				t *= p;
+				off += t;
+			}
+			return new Codeword(digits,p);
+		}
+
+		// swap the columns so the leftmost columns of the PCM are the identity matrix (backwards, but that doesn't matter)
+		var rows = pcm.map(swap_digits);
+		// find a generating matrix for the dual code (i.e., the actual Hamming code, but with columns swapped)
+		var dual = parity_check_matrix(rows);
+		// swap the columns back
+		var gen = dual.map(swap_digits);
+
+		return gen;
+	}
+
 	var Code = codewords.Code = function(words) {
 		this.words = words;
 		this.length = this.words.length;
@@ -933,6 +974,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return random_word(n,field_size);
 	}));
 
+	codewords.scope.addFunction(new funcObj('random_combination',[TList],TCodeword,function(basis) {
+		return random_combination(basis);
+	},{unwrapValues: true}));
+
 	codewords.scope.addFunction(new funcObj('set_generated_by',[TList],TList,function(basis) {
 		return codewords.set_generated_by(basis).map(function(c){return new TCodeword(c)});
 	},{unwrapValues: true}));
@@ -968,6 +1013,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 
 	codewords.scope.addFunction(new funcObj('hamming_parity_check_matrix',[TNum,TNum],TList,function(p,r) {
 		return codewords.hamming_parity_check_matrix(p,r).map(function(c){return new TCodeword(c)});
+	},{unwrapValues: true}));
+
+	codewords.scope.addFunction(new funcObj('hamming_generating_matrix',[TNum,TNum],TList,function(p,r) {
+		return codewords.hamming_generating_matrix(p,r).map(function(c){return new TCodeword(c)});
 	},{unwrapValues: true}));
 
 	codewords.scope.addFunction(new funcObj('syndrome',[TCodeword,TList],TCodeword,function(word,pcm) {
