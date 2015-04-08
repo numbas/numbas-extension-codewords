@@ -749,7 +749,7 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			return '\\{'+this.words.map(function(word){return word.toLaTeX()}).join(', ')+'\\}';
 		},
 		toJME: function() {
-			return 'code('+this.words.map(function(word){return word.toJME()}).join(', ')+')';
+			return 'code(['+this.words.map(function(word){return word.toJME()}).join(', ')+'])';
 		},
 
 		/** Do this and b have exactly the same words?
@@ -896,6 +896,11 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return tok.value.toJME();
 	}
 
+	Numbas.jme.display.texOps.codeword = function(thing,texArgs,settings) {
+		var word = codewords.scope.evaluate(thing);
+		return word.value.toLaTeX();
+	}
+
 	var TCode = Numbas.jme.types.code = Numbas.jme.types.TCode = function(code) {
 		this.value = code;
 	}
@@ -908,6 +913,12 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 	Numbas.jme.display.typeToJME.code = function(tree,tok,bits,settings) {
 		return tok.value.toJME();
 	}
+
+	Numbas.jme.display.texOps.code = function(thing,texArgs,settings) {
+		var code = codewords.scope.evaluate(thing);
+		return code.value.toLaTeX();
+	}
+
 
 	var funcObj = Numbas.jme.funcObj;
 	var TString = Numbas.jme.types.TString;
