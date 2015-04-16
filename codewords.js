@@ -358,39 +358,6 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return inverses;
 	}
 
-	var gaussian_elimination = codewords.gaussian_elimination = function(basis) {
-		basis.sort(keysort('asString'));
-		var field_size = basis[0].field_size;
-		var matrix = basis.slice();
-		var rows = matrix.length;
-
-		var inverses = get_inverses(field_size);
-
-		for(var c=0;c<rows;c++) {
-			// find the first row with a non-zero in column c
-			for(var i=c;i<rows;i++) {
-				if(matrix[i].digits[c]!=0 && inverses[matrix[i].digits[c]]!==undefined) {
-					break;
-				}
-			}
-			if(i==rows) {
-				throw(new Error('nothing in column '+row));
-			}
-
-			// multiply by the inverse of m_c,c so it has a 1 at that position
-			var inv = inverses[matrix[i].digits[c]];
-			matrix[i] = matrix[i].scale(inv);
-
-			for(var row=0;row<rows;row++) {
-				if(row!=i && matrix[row].digits[c]!=0) {
-					matrix[row] = matrix[row].sub(matrix[i].scale(matrix[row].digits[c]));
-				}
-			}
-		}
-
-		return matrix;
-	}
-
 	var reduced_row_echelon_form = codewords.reduced_row_echelon_form = function(basis) {
 		var field_size = basis[0].field_size;
 		var matrix = basis.slice();
@@ -1090,6 +1057,7 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return new Codeword(digits,field_size);
 	}));
 
+	// 'len' is a synonym for 'abs' and makes more sense, semantically
 	codewords.scope.addFunction(new funcObj('abs',[TCodeword],TNum,function(word) {
 		return word.length;
 	}));
