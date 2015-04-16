@@ -389,43 +389,43 @@ A wrapper object for the code containing the given words.
 
 #### `Code` methods
 
-##### `toString()`
+##### `code.toString()`
 
 String representation of the code - list all its words.
 
-##### `toLaTeX()`
+##### `code.toLaTeX()`
 
 LaTeX representation of the code.
 
-##### `toJME()`
+##### `code.toJME()`
 
 JME representation of the code.
 
-##### `eq(code2)`
+##### `code.eq(code2)`
 
 Is this code the same as `code2`?
 
-##### `contains(word)`
+##### `code.contains(word)`
 
 Does this code contain `word`?
 
-##### `equivalent(code2)`
+##### `code.equivalent(code2)`
 
 Is this code equivalent to `code2` - can you get from one to the other by performing positional and symbolic permutations on the digits of the codewords?
 
-##### `minimum_distance()`
+##### `code.minimum_distance()`
 
 Minimum Hamming distance between codewords.
 
-##### `information_rate()`
+##### `code.information_rate()`
 
 Information rate of the code.
 
-##### `positional_permutation(order)`
+##### `code.positional_permutation(order)`
 
 Perform a positional permutation on the words in the code. `order` is a list, where column `i` is sent to `order[i]`. Returns a new `Code` object.
 
-##### `symbolic permutation(symbols)`
+##### `code.symbolic permutation(symbols)`
 
 Perform a symbolic permutation on the words in the code. `symbols` is a list, where digit `i` is changed to `symbols[i]`. Returns a new `Code` object.
 
