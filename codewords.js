@@ -944,6 +944,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return zero_word(word_length,field_size);
 	}));
 
+	codewords.scope.addFunction(new funcObj('is_zero',[TCodeword],TBool,function(word) {
+		return word.isZero();
+	}));
+
 	codewords.scope.addFunction(new funcObj('+',[TCodeword,TCodeword],TCodeword,function(w1,w2) {
 		return w1.add(w2);
 	}));
