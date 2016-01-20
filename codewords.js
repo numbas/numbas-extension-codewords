@@ -39,6 +39,14 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		toJME: function() {
 			return 'codeword("'+this.asString+'",'+this.field_size+')';
 		},
+		isZero: function() {
+			for(var i=0;i<this.length;i++) {
+				if(this.digits[i]!==0) {
+					return false;
+				}
+			}
+			return true;
+		},
 		eq: function(b) {
 			var a = this; 
 			return a.field_size==b.field_size && a.length==b.length && a+''==b+''; 
@@ -210,6 +218,18 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return new Codeword(digits,field_size);
 	}
 
+	// random linear combination of the given words
+	var random_combination = codewords.random_combination = function(basis) {
+		var field_size = basis[0].field_size;
+		var word_length = basis[0].length;
+		var t = zero_word(word_length,field_size);
+
+		for(var i=0;i<basis.length;i++) {
+			t = t.add(basis[i].scale(Numbas.math.randomint(field_size)));
+		}
+		return t;
+	}
+
 	var set_generated_by = codewords.set_generated_by = function(basis) {
 		if(!basis.length) {
 			return [];
@@ -242,7 +262,9 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			var j = 0;
 			while(coefficients[j]==field_size) {
 				coefficients[j] = 0;
-				coefficients[j+1] += 1;
+				if(j<words.length-1) {
+					coefficients[j+1] += 1;
+				}
 				j+=1;
 			}
 
@@ -263,10 +285,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		var combs = set_generated_by(basis);
 		return combs.map(function(w2) {
 			return word.add(w2);
-		}).sort(sort_by_weight);
+		});
 	}
 
-	var sleppian_array = codewords.sleppian_array = function(basis) {
+	var slepian_array = codewords.slepian_array = function(basis) {
 		if(!basis.length) {
 			return [];
 		}
@@ -277,6 +299,13 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		var sets = [base];
 		var seen = base.map(function(w){return w+''});
 		var all = allwords(length,field_size);
+		all.sort(function(r1,r2) {
+			var a = r1+'';
+			var b = r2+'';
+			var w1 = r1.weight();
+			var w2 = r2.weight();
+			return w1>w2 ? 1 : w1<w2 ? -1 : a>b ? 1 : a<b ? -1 : 0;
+		})
 		all.map(function(w) {
 			if(seen.indexOf(w+'')==-1) {
 				var cs = coset_containing(w,basis);
@@ -316,12 +345,7 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		a.splice(y,0,a.splice(x,1,a.splice(y,1)[0])[0]);
 	}
 
-	var gaussian_elimination = codewords.gaussian_elimination = function(basis) {
-		basis.sort(keysort('asString'));
-		var field_size = basis[0].field_size;
-		var matrix = basis.slice();
-		var rows = matrix.length;
-
+	function get_inverses(field_size) {
 		var inverses = [0,1];
 		for(var i=2;i<field_size;i++) {
 			for(var j=1;j<field_size;j++) {
@@ -331,30 +355,7 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 				}
 			}
 		}
-
-		for(var c=0;c<rows;c++) {
-			// find the first row with a non-zero in column c
-			for(var i=c;i<rows;i++) {
-				if(matrix[i].digits[c]!=0 && inverses[matrix[i].digits[c]]!==undefined) {
-					break;
-				}
-			}
-			if(i==rows) {
-				throw(new Error('nothing in column '+row));
-			}
-
-			// multiply by the inverse of m_c,c so it has a 1 at that position
-			var inv = inverses[matrix[i].digits[c]];
-			matrix[i] = matrix[i].scale(inv);
-
-			for(var row=0;row<rows;row++) {
-				if(row!=i && matrix[row].digits[c]!=0) {
-					matrix[row] = matrix[row].sub(matrix[i].scale(matrix[row].digits[c]));
-				}
-			}
-		}
-
-		return matrix;
+		return inverses;
 	}
 
 	var reduced_row_echelon_form = codewords.reduced_row_echelon_form = function(basis) {
@@ -410,6 +411,13 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return matrix;
 	}
 
+	/* Generator matrix for the given words */
+	var generator_matrix = codewords.generator_matrix = function(words) {
+		var matrix = reduced_row_echelon_form(words);
+		matrix = matrix.filter(function(w){return !w.isZero()});
+		return matrix;
+	}
+
 	var parity_check_matrix = codewords.parity_check_matrix = function(basis) {
 		var field_size = basis[0].field_size;
 		var g = reduced_row_echelon_form(basis);
@@ -428,6 +436,43 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			m.push(new Codeword(row,field_size));
 		}
 		return m;
+	}
+
+	var lexicographic_parity_check_matrix = codewords.lexicographic_parity_check_matrix = function(basis) {
+		var field_size = basis[0].field_size;
+		var pcm = parity_check_matrix(basis);
+
+		// transpose the matrix, because we're going to work with columns
+		var columns = [];
+		for(var i=0;i<basis[0].length;i++) {
+			var column = pcm.map(function(row){return row.digits[i];});
+			columns.push(new Codeword(column,field_size));
+		}
+
+		// ensure the first non-zero digit of each column is 1
+		var inverses = get_inverses(field_size);
+		columns = columns.map(function(column) {
+			for(var i=0;i<column.length;i++) {
+				if(column.digits[i]!=0) {
+					return column.scale(inverses[column.digits[i]]);
+				}
+			}
+			return column;
+		});
+
+		// sort columns lexicographically
+		columns.sort(function(c1,c2) {
+			var s1 = c1+'';
+			var s2 = c2+'';
+			return s1>s2 ? 1 : s1<s2 ? -1 : 0;
+		});
+		
+		var rows = [];
+		for(var i=0;i<columns[0].length;i++) {
+			var row = columns.map(function(column){return column.digits[i];});
+			rows.push(new Codeword(row,field_size));
+		}
+		return rows;
 	}
 
 	codewords.hamming_square_encode = function(words) {
@@ -569,6 +614,93 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return new Codeword(out,2);
 	}
 
+	/* pcm is a parity check matrix for the code, given as a list of codewords */
+	var syndrome = codewords.syndrome = function(word,pcm) {
+		var word_length = word.length;
+		var field_size = word.field_size;
+		var digits = pcm.map(function(row) {
+			var t = 0;
+			for(var i=0;i<word_length;i++) {
+				t += word.digits[i]*row.digits[i];
+			}
+			return Numbas.math.mod(t,field_size);
+		});
+		return new Codeword(digits,field_size);
+	}
+
+	/* Lexicographic parity check matrix for Hamming code Ham_p(r) */
+	var hamming_parity_check_matrix = codewords.hamming_parity_check_matrix = function(p,r) {
+		// each column starts with a 1
+		// every possible column appears once, and columns are in lexicographic order
+
+		var columns = [];
+		var ends = [[]];
+		// i is the number of zeros at the start of the column
+		for(var i=r-1;i>=0;i--) {
+
+			//each column starts with i zeros followed by a 1
+			var start = [];
+			for(var j=0;j<i;j++) {
+				start.push(0);
+			}
+			start.push(1);
+
+			// for each possible p-ary string after the 1, make a column
+			var i_columns = ends.map(function(digits) {
+				return start.concat(digits);
+			});
+			columns = columns.concat(i_columns);
+
+			if(i>0) {
+				// for the next step, compute the possible ends of columns (strings after the first 1)
+				// by taking the Cartesian product (0,1,2)x(ends)
+				var nends = [];
+				for(var j=0;j<p;j++) {
+					ends.map(function(end) {
+						nends.push([j].concat(end));
+					});
+				}
+				ends = nends;
+			}
+		}
+
+		var out = [];
+		for(var i=0;i<r;i++) {
+			var row = columns.map(function(column){return column[i]});
+			out.push(new Codeword(row,p));
+		}
+
+		return out;
+	}
+
+	/* Generating matrix for the p-ary Hamming code whose PCM has r rows */
+	var hamming_generating_matrix = codewords.hamming_generating_matrix = function(p,r) {
+		// Generate the parity-check matrix
+		var pcm = hamming_parity_check_matrix(p,r);
+
+		function swap_digits(row) {
+			var digits = row.digits.slice();
+			var off = 1;
+			var t = 1;
+			for(var i=1;i<r;i++) {
+				var b = digits[i];
+				digits[i] = digits[off];
+				digits[off] = b;
+				t *= p;
+				off += t;
+			}
+			return new Codeword(digits,p);
+		}
+
+		// swap the columns so the leftmost columns of the PCM are the identity matrix (backwards, but that doesn't matter)
+		var rows = pcm.map(swap_digits);
+		// find a generating matrix for the dual code (i.e., the actual Hamming code, but with columns swapped)
+		var dual = parity_check_matrix(rows);
+		// swap the columns back
+		var gen = dual.map(swap_digits);
+
+		return gen;
+	}
 
 	var Code = codewords.Code = function(words) {
 		this.words = words;
@@ -584,7 +716,7 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			return '\\{'+this.words.map(function(word){return word.toLaTeX()}).join(', ')+'\\}';
 		},
 		toJME: function() {
-			return 'code('+this.words.map(function(word){return word.toJME()}).join(', ')+')';
+			return 'code(['+this.words.map(function(word){return word.toJME()}).join(', ')+'])';
 		},
 
 		/** Do this and b have exactly the same words?
@@ -608,6 +740,15 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 				}
 			}
 			return true;
+		},
+
+		contains: function(w) {
+			for(var i=0;i<this.length;i++) {
+				if(this.words[i].eq(w)) {
+					return true;
+				}
+			}
+			return false;
 		},
 
 		/** This is equivalent to b if we can get to b by positional or symbolic permutations
@@ -728,6 +869,11 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return tok.value.toJME();
 	}
 
+	Numbas.jme.display.texOps.codeword = function(thing,texArgs,settings) {
+		var word = codewords.scope.evaluate(thing);
+		return word.value.toLaTeX();
+	}
+
 	var TCode = Numbas.jme.types.code = Numbas.jme.types.TCode = function(code) {
 		this.value = code;
 	}
@@ -741,6 +887,12 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return tok.value.toJME();
 	}
 
+	Numbas.jme.display.texOps.code = function(thing,texArgs,settings) {
+		var code = codewords.scope.evaluate(thing);
+		return code.value.toLaTeX();
+	}
+
+
 	var funcObj = Numbas.jme.funcObj;
 	var TString = Numbas.jme.types.TString;
 	var TNum = Numbas.jme.types.TNum;
@@ -748,12 +900,16 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 	var TBool = Numbas.jme.types.TBool;
 	var TMatrix = Numbas.jme.types.TMatrix;
 	var TRange = Numbas.jme.types.TRange;
+	var TVector = Numbas.jme.types.TVector;
 
 	codewords.scope.addFunction(new funcObj('codeword',[TString,TNum],TCodeword,function(word,field_size) {
 		return Codeword.fromString(word,field_size) ;
 	}));
 	codewords.scope.addFunction(new funcObj('codeword',[TList,TNum],TCodeword,function(digits,field_size) {
 		digits = digits.map(function(i){ return i.value; });
+		return new Codeword(digits,field_size) ;
+	}));
+	codewords.scope.addFunction(new funcObj('codeword',[TVector,TNum],TCodeword,function(digits,field_size) {
 		return new Codeword(digits,field_size) ;
 	}));
 
@@ -768,6 +924,9 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			s.latex = true;
 			return s;
 		}
+	}));
+	codewords.scope.addFunction(new funcObj('is_zero',[TCodeword],TBool,function(word) {
+		return word.isZero();
 	}));
 
 	codewords.scope.addFunction(new funcObj('+',[TCodeword,TCodeword],TCodeword,function(w1,w2) {
@@ -798,6 +957,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return w.digits.slice(range[0],range[1]).map(function(d){return new TNum(d)});
 	}));
 
+	codewords.scope.addFunction(new funcObj('weight',[TCodeword],TNum,function(w) {
+		return w.weight();
+	}));
+
 	codewords.scope.addFunction(new funcObj('allwords',[TNum,TNum],TList,function(n,field_size) {
 		var words = codewords.allwords(n,field_size).map(function(c){return new TCodeword(c)});
 		return words;
@@ -806,6 +969,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 	codewords.scope.addFunction(new funcObj('random_word',[TNum,TNum],TCodeword,function(n,field_size) {
 		return random_word(n,field_size);
 	}));
+
+	codewords.scope.addFunction(new funcObj('random_combination',[TList],TCodeword,function(basis) {
+		return random_combination(basis);
+	},{unwrapValues: true}));
 
 	codewords.scope.addFunction(new funcObj('set_generated_by',[TList],TList,function(basis) {
 		return codewords.set_generated_by(basis).map(function(c){return new TCodeword(c)});
@@ -819,18 +986,39 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return codewords.coset_containing(word,basis).map(function(c){return new TCodeword(c)});
 	},{unwrapValues: true}));
 
-	codewords.scope.addFunction(new funcObj('sleppian_array',[TList],TList,function(basis) {
-		var sleppian = codewords.sleppian_array(basis).map(function(row){return row.map(function(c){return new TCodeword(c)})});
-		return sleppian;
+	codewords.scope.addFunction(new funcObj('slepian_array',[TList],TList,function(basis) {
+		var slepian = codewords.slepian_array(basis).map(function(row){return row.map(function(c){return new TCodeword(c)})});
+		return slepian;
 	},{unwrapValues: true}));
 
 	codewords.scope.addFunction(new funcObj('is_coset_leader',[TCodeword,TList],TBool,function(word,basis) {
 		return codewords.is_coset_leader(word,basis);
 	},{unwrapValues: true}));
 
+	codewords.scope.addFunction(new funcObj('generator_matrix',[TList],TList,function(basis) {
+		return codewords.generator_matrix(basis).map(function(c){return new TCodeword(c)});
+	},{unwrapValues: true}));
+
 	codewords.scope.addFunction(new funcObj('parity_check_matrix',[TList],TList,function(basis) {
 		return codewords.parity_check_matrix(basis).map(function(c){return new TCodeword(c)});
 	},{unwrapValues: true}));
+
+	codewords.scope.addFunction(new funcObj('lexicographic_parity_check_matrix',[TList],TList,function(basis) {
+		return codewords.lexicographic_parity_check_matrix(basis).map(function(c){return new TCodeword(c)});
+	},{unwrapValues: true}));
+
+	codewords.scope.addFunction(new funcObj('hamming_parity_check_matrix',[TNum,TNum],TList,function(p,r) {
+		return codewords.hamming_parity_check_matrix(p,r).map(function(c){return new TCodeword(c)});
+	},{unwrapValues: true}));
+
+	codewords.scope.addFunction(new funcObj('hamming_generating_matrix',[TNum,TNum],TList,function(p,r) {
+		return codewords.hamming_generating_matrix(p,r).map(function(c){return new TCodeword(c)});
+	},{unwrapValues: true}));
+
+	codewords.scope.addFunction(new funcObj('syndrome',[TCodeword,TList],TCodeword,function(word,pcm) {
+		pcm = pcm.map(function(i){ return i.value; });
+		return codewords.syndrome(word,pcm);
+	}));
 
 	codewords.scope.addFunction(new funcObj('reduced_row_echelon_form',[TList],TList,function(basis) {
 		return codewords.reduced_row_echelon_form(basis).map(function(c){return new TCodeword(c)});
@@ -883,6 +1071,7 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return new Codeword(digits,field_size);
 	}));
 
+	// 'len' is a synonym for 'abs' and makes more sense, semantically
 	codewords.scope.addFunction(new funcObj('abs',[TCodeword],TNum,function(word) {
 		return word.length;
 	}));
@@ -905,8 +1094,16 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return word.toString();
 	}));
 
+	codewords.scope.addFunction(new funcObj('latex',[TCodeword],TString,function(word) {
+		return word.toLaTeX();
+	},{latex:true}));
+
 	codewords.scope.addFunction(new funcObj('code',[TList],TCode,function(words) {
 		return new Code(words.map(function(tword){return tword.value}));
+	}));
+
+	codewords.scope.addFunction(new funcObj('allwords',[TCode],TList,function(code) {
+		return code.words.map(function(w){return new TCodeword(w)});
 	}));
 
 	codewords.scope.addFunction(new funcObj('minimum_distance',[TCode],TNum,function(code) {
@@ -1006,9 +1203,9 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 	console.log('coset generated by '+w+': '+c.join(','));
 	console.log('is coset leader? '+is_coset_leader(w,basis));
 
-	var sleppian = sleppian_array(basis);
-	console.log('sleppian array');
-	console.log(sleppian.map(function(cs){return cs.join(',');}).join('\n'));
+	var slepian = slepian_array(basis);
+	console.log('slepian array');
+	console.log(slepian.map(function(cs){return cs.join(',');}).join('\n'));
 
 	var a = scope.evaluate('code(shuffle(allwords(4,2))[0..3])').value;
 	var b = a.positional_permutation(Numbas.math.deal(4)).symbolic_permutation(Numbas.math.deal(2));
