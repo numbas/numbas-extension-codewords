@@ -235,9 +235,8 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		}
 		var field_size = words[0].field_size;
 		var word_length = words[0].length;
-		var num_combinations = Math.pow(words.length,field_size);
+		var num_combinations = Math.pow(field_size,words.length);
 		var z = zero_word(word_length,field_size);
-		console.log(num_combinations);
 		for(var i=1;i<num_combinations;i++) {
 			coefficients[0] += 1;
 			var j = 0;
@@ -639,6 +638,12 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			return false;
 		},
 
+		contains: function(word) {
+			return this.words.reduce(function(got,word2) {
+				return got || word2.eq(word);
+			},false);
+		},
+
 		minimum_distance: function() {
 			if(this.length==0) {
 				return 0;
@@ -754,6 +759,15 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 
 	codewords.scope.addFunction(new funcObj('zero',[TNum,TNum],TCodeword,function(word_length,field_size) {
 		return zero_word(word_length,field_size);
+	}));
+
+	codewords.scope.addFunction(new funcObj('latex',[TCodeword],TString,null, {
+		evaluate: function(args,scope) {
+			var tex = args[0].value.toLaTeX();
+			var s = new TString(tex);
+			s.latex = true;
+			return s;
+		}
 	}));
 
 	codewords.scope.addFunction(new funcObj('+',[TCodeword,TCodeword],TCodeword,function(w1,w2) {
@@ -940,6 +954,39 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 
 	Numbas.util.equalityTests.code = function(a,b) {
 		return a.value.eq(b.value);
+	}
+
+
+	/** Marking scripts **/
+
+	/** Mark a list of codewords - check the answer syntax, then pass on a list of parsed codewords to the given function
+	 * @param {Numbas.Part} part
+	 * @param {number} field_size
+	 * @param {function} fn - marking logic, passed a list of codewords, and `this` is the part object
+	*/
+	codewords.mark_codeword_set = function(part,field_size,fn) {
+	  var re_answer = /^\s*\d+(\s*,\s*\d+)*\s*$/;
+	  
+	  part.correct_format = re_answer.test(part.studentAnswer);
+	  if(!part.correct_format) {
+		part.setCredit(0,"Your answer is not a list of codewords.");
+		return;
+	  }
+		
+	  var bits = part.studentAnswer.trim().split(/\s*,\s*/);
+	  var words = bits.map(function(bit) {
+		return Codeword.fromString(bit,field_size);
+	  });
+	  
+	  fn.apply(part,[words]);
+	}
+
+	codewords.validate_codeword_set = function(part) {
+		if(!part.correct_format) {
+			part.giveWarning('You have not written a valid answer. Your answer should be a list of codewords separated by commas.');
+			return false;
+		}
+		return true;
 	}
 
 	///////// demo

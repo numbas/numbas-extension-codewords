@@ -3,6 +3,11 @@ Linear codes extension for Numbas
 
 This extension provides a new data type and some functions to deal with linear codes.
 
+JME data types
+--------------
+
+This extension adds two new JME data types, `Numbas.jme.types.codeword` and `Numbas.jme.types.code`.
+
 JME functions
 -------------
 
@@ -13,6 +18,14 @@ Create a codeword from a list of digits, in Z_{field_size}. For example, `codewo
 ### `codeword(word_string,field_size)`
 
 Create a codeword from a string of digits, in Z_{field_zie}. For example, `codeword("11001",2)`
+
+### `zero(word_length,field_size)`
+
+The zero word of the given length, in Z_{field_size}.
+
+### `latex(codeword)`
+
+A LaTeX rendering of the given codeword.
 
 ### `word1+word2`
 
@@ -57,6 +70,8 @@ Generate the coset containing the given word, with respect to the given generati
 ### `sleppian_array(basis)`
 
 Generate the Sleppian array corresponding to the given basis set. Each row in the result is a coset, sorted by weight.
+
+_I'm aware of the spelling mistake - it should be "Slepian", but my source material was incorrect and it's too much work to change now!_
 
 ### `is_coset_leader(word,basis)`
 
@@ -169,3 +184,16 @@ Singleton bound on the maximum number of codewords in a code with the given para
 ### gilbert_varshamov_bound(field_size,word_length,minimum_distance)`
 
 Gilbert-Varshamov bound on the minimum number of codewords in a code with the given parameters.
+
+Javascript functions
+--------------------
+
+### `Numbas.extensions.codewords.mark_codeword_set(part,field_size,callback)`
+
+Mark a list of codewords - check the answer syntax, then pass on a list of parsed codewords to the given callback function.
+
+In the callback function, `this` is the part object.
+
+### `Numbas.extensions.codewords.validate_codeword_set(part)`
+
+Validation script - is the student's answer a list of codewords?
