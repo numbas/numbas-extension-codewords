@@ -83,8 +83,6 @@ Generate the coset containing the given word, with respect to the given generati
 
 Generate the Slepian array corresponding to the given basis set. Each row in the result is a coset, sorted by weight.
 
-_I'm aware of the spelling mistake - it should be "Slepian", but my source material was incorrect and it's too much work to change now!_
-
 ### `is_coset_leader(word,basis)`
 
 Is the given word a coset leader in its coset? That is, does it have the minimum weight?
