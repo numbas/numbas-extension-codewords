@@ -430,7 +430,7 @@ The minimum Hamming distance between any pair of words in this code.
 
 ##### `code.information_rate()`
 
-Information rate of the code.
+Information rate of the code: `log(number of words)/(log(2)*word length)`
 
 ##### `code.positional_permutation(order)`
 
