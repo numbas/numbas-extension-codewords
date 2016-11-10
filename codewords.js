@@ -23,6 +23,18 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		}
 	}
 
+    /** Create a codeword with the given digits, belonging to the field `Z_{field_size}`.
+     * @constructor
+     * @memberof codewords
+     * @property {number} field_size
+     * @property {number[]} digits
+     * @property {number} length
+     * @property {string} asString
+     *
+     * @param {number[]} digits
+     * @param {number} field_size
+     */
+
 	var Codeword = codewords.Codeword = function(digits,field_size) {
 		this.field_size = field_size || 2;
 		this.digits = digits || [];
@@ -30,15 +42,27 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		this.asString = this.digits.join('');
 	}
 	Codeword.prototype = {
+        /** String representation of the word.
+         * @returns {string}
+         */
 		toString: function() {
 			return this.asString;
 		},
+        /** LaTeX representation of the word.
+         * @returns {string}
+         */
 		toLaTeX: function() {
 			return '\\mathtt{'+this.asString+'}';
 		},
+        /** JME representation of the word.
+         * @returns {string}
+         */
 		toJME: function() {
 			return 'codeword("'+this.asString+'",'+this.field_size+')';
 		},
+        /** Is the word zero (are all its digits 0)?
+         * @returns {boolean}
+         */
 		isZero: function() {
 			for(var i=0;i<this.length;i++) {
 				if(this.digits[i]!==0) {
@@ -47,10 +71,17 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			}
 			return true;
 		},
+        /** Is this word the same as `word2`?
+         * @returns {boolean}
+         */
 		eq: function(b) {
 			var a = this; 
 			return a.field_size==b.field_size && a.length==b.length && a+''==b+''; 
 		},
+        /** Return a new word which is the sum of this word and `word2`.
+         * @param {codewords.Codeword} w2
+         * @returns {codewords.Codeword}
+         */
 		add: function(w2) {
 			var field_size = this.field_size;
 			var digits = this.digits.map(function(d1,i) {
@@ -58,6 +89,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			});
 			return new Codeword(digits,field_size);
 		},
+        /** Subtract `word2` from this word (returns a new codeword object).
+         * @param {codewords.Codeword} w2
+         * @returns {codewords.Codeword}
+         */
 		sub: function(w2) {
 			var field_size = this.field_size;
 			var digits = this.digits.map(function(d1,i) {
@@ -69,6 +104,9 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			});
 			return new Codeword(digits,field_size);
 		},
+        /** Negate this word: `w.add(w.negate()) = 0`.
+         * @returns {codewords.Codeword}
+         */
 		negate: function() {
 			var field_size = this.field_size;
 			var digits = this.digits.map(function(d) {
@@ -76,6 +114,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			});
 			return new Codeword(digits,field_size);
 		},
+        /** Scale this word by `n` - multiply every digit by `n`.
+         * @param {number} n
+         * @returns {codewords.Codeword}
+         */
 		scale: function(n) {
 			var field_size = this.field_size;
 			n = n % field_size;
@@ -87,10 +129,16 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			});
 			return new Codeword(digits,this.field_size);
 		},
+        /** Hamming weight of this word - number of non-zero digits.
+         * @returns {number}
+         */
 		weight: function() {
 			return this.digits.reduce(function(a,b){return a+(b>0?1:0)},0);
 		},
 
+        /** LaTeX rendering of a Hamming square code check array for this word (only makes sense if this word is a 9-digit binary word)
+         * @returns {string}
+         */
 		LaTeX_check_array: function() {
 			var n = Math.sqrt(this.length);
 
@@ -111,6 +159,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			return out;
 		},
 
+        /** Find all words within `radius` Hamming distance of this word.
+         * @param {number} radius
+         * @returns {codewords.Codeword[]}
+         */
 		hamming_ball: function(radius) {
 			var field_size = this.field_size;
 			function ball(digits,radius) {
@@ -139,6 +191,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			return ball(this.digits,radius).map(function(digits){ return new Codeword(digits,field_size) });
 		},
 
+        /** Find all words with Hamming distance exactly `radius` from this word.
+         * @param {number} radius
+         * @returns {codewords.Codeword[]}
+         */
 		hamming_sphere: function(radius) {
 			var field_size = this.field_size;
 			function ball(digits,radius) {
@@ -174,31 +230,56 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		}
 	}
 
+    /** Create a codeword object from a string representation, e.g. `Codeword.fromString("01001",2)`.
+     * @param {string} w
+     * @param {number} field_size
+     * @returns {codewords.Codeword}
+     */
 	Codeword.fromString = function(w,field_size) {
 		w = w || '';
 		var digits = w.split('').map(function(d){ return parseInt(d) });
 		return new Codeword(digits,field_size);
 	}
+    /** Comparison function to sort codewords lexicographically.
+     * @param {codeword.Codeword} a
+     * @param {codeword.Codeword} b
+     * @returns {number}
+     */
 	Codeword.sort = function(a,b){
 		a = a+'';
 		b = b+'';
 		return a>b ? 1 : a<b ? -1 : 0 
 	};
+    /** Equivalent to `w1.eq(w2)`.
+     * @param {codeword.Codeword} a
+     * @param {codeword.Codeword} b
+     * @returns {number}
+     */
 	Codeword.eq = function(a,b) { return a.eq(b); }
 
 	var sort_by_weight = keysort(function(w){return w.weight()});
 
-	var zero_word = codewords.zero_word = function(n,field_size) {
+    /** Create a zero word with the given length in the field `Z_{field_size}`.
+     * @param {number} word_length
+     * @param {number} field_size
+     * @returns {codewords.Codeword}
+     */
+	var zero_word = codewords.zero_word = function(word_length,field_size) {
 		var digits = [];
-		for(var i=0;i<n;i++) {
+		for(var i=0;i<word_length;i++) {
 			digits.push(0);
 		}
 		return new Codeword(digits,field_size);
 	}
 
-	var allwords = codewords.allwords = function(n,field_size) {
+    /** Get all words of the given length in the field `Z_{field_size}`.
+     * @param {number} word_length
+     * @param {number} field_size
+     * @returns {codewords.Codeword[]}
+     */
+	var allwords = codewords.allwords = function(word_length,field_size) {
 		var l = [''];
-		for(var i=0;i<n;i++) {
+		for(var i=0;i<word_length;i++) {
 			var nl = [];
 			l.map(function(w) {
 				for(var j=0;j<field_size;j++) {
@@ -210,15 +291,23 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return l.map(function(w){ return Codeword.fromString(w,field_size) });
 	}
 
-	var random_word = codewords.random_word = function(n,field_size) {
+    /** Get a random word of the given length in the field `Z_{field_size}`.
+     * @param {number} word_length
+     * @param {number} field_size
+     * @returns {codewords.Codeword}
+     */
+	var random_word = codewords.random_word = function(word_length,field_size) {
 		var digits = [];
-		for(var i=0;i<n;i++) {
+		for(var i=0;i<word_length;i++) {
 			digits.push(Numbas.math.randomint(field_size));
 		}
 		return new Codeword(digits,field_size);
 	}
 
-	// random linear combination of the given words
+    /** A random linear combination of the given words (from the field `Z_p`), i.e. `a_0*w_0 + a_1*w_1 + ... + a_n*w_n` where the `a_i` are elements of the field `Z_p`.
+     * @param {codewords.Codeword} basis
+     * @returns {codewords.Codeword}
+     */
 	var random_combination = codewords.random_combination = function(basis) {
 		var field_size = basis[0].field_size;
 		var word_length = basis[0].length;
@@ -230,6 +319,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return t;
 	}
 
+    /** Get all words generated by the given basis set.
+     * @param {codewords.Codeword[]} basis
+     * @returns {codewords.Codeword[]}
+     */
 	var set_generated_by = codewords.set_generated_by = function(basis) {
 		if(!basis.length) {
 			return [];
@@ -247,8 +340,12 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return set(generated,Codeword.sort,Codeword.eq);
 	}
 
+    /** Are all of the given words linearly independent of each other?
+     * words are linearly independent if l1w1 + l2w2 + .. +lnwn = 0 has no solution other than l1=l2=...=ln=0
+     * @param {codewords.Codeword[]} words
+     * @returns {boolean}
+     */
 	var linearly_independent = codewords.linearly_independent = function(words) {
-		// words are linearly independent if l1w1 + l2w2 + .. +lnwn = 0 has no solution other than l1=l2=...=ln=0
 		var coefficients = [];
 		for(var i=0;i<words.length;i++) {
 			coefficients.push(0);
@@ -279,6 +376,11 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return true;
 	}
 
+    /** Generate the coset containing the given word, with respect to the given generating set.
+     * @param {codewords.Codeword} word
+     * @param {codewords.Codeword[]} basis
+     * @returns {codewords.Codeword[]}
+     */
 	var coset_containing = codewords.coset_containing = function(word,basis) {
 		var field_size = word.field_size;
 		var length = word.length;
@@ -288,6 +390,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		});
 	}
 
+    /** Generate the Slepian array corresponding to the given basis set. Each row in the result is a coset, sorted by weight.
+     * @param {codewords.Codeword[]} basis
+     * @returns {codewords.Codeword[][]}
+     */
 	var slepian_array = codewords.slepian_array = function(basis) {
 		if(!basis.length) {
 			return [];
@@ -316,12 +422,22 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return sets;
 	}
 
+    /** Is the given word a coset leader in its coset? That is, does it have the minimum weight?
+     * @param {codewords.Codeword} word
+     * @param {codewords.Codeword[]} basis
+     * @returns {boolean}
+     */
 	var is_coset_leader = codewords.is_coset_leader = function(word,basis) {
 		var coset = coset_containing(word,basis);
 		coset.sort(sort_by_weight);
 		return word.weight()==coset[0].weight();
 	}
 
+    /** Hamming distance between two words.
+     * @param {codewords.Codeword} a
+     * @param {codewords.Codeword} b
+     * @returns {number}
+     */
 	var hamming_distance = codewords.hamming_distance = function(a,b) {
 		if(a.length!=b.length) {
 			return;
@@ -335,7 +451,11 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return d;
 	}
 
-	// swap the ith and jth positions in array a
+	/** swap the ith and jth positions in array a
+     * @param {Array} a
+     * @param {number} i
+     * @param {number} j
+     */
 	function swap(a,i,j){
 		if(i==j) {
 			return;
@@ -345,7 +465,11 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		a.splice(y,0,a.splice(x,1,a.splice(y,1)[0])[0]);
 	}
 
-	function get_inverses(field_size) {
+    /** Compute the multiplicative inverses of the elements of the field Z_{field_size}
+     * @param {number} field_size
+     * @returns {number[]}
+     */
+    function get_inverses(field_size) {
 		var inverses = [0,1];
 		for(var i=2;i<field_size;i++) {
 			for(var j=1;j<field_size;j++) {
@@ -358,6 +482,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return inverses;
 	}
 
+    /** Put the given list of words (interpreted as a matrix) into reduced row-echelon form by reordering and taking linear combinations.
+     * @param {codewords.Codeword[]} basis
+     * @returns {codewords.Codeword[]}
+     */
 	var reduced_row_echelon_form = codewords.reduced_row_echelon_form = function(basis) {
 		var field_size = basis[0].field_size;
 		var matrix = basis.slice();
@@ -411,13 +539,20 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return matrix;
 	}
 
-	/* Generator matrix for the given words */
+	/** A minimal set of generators for the linear code generated by the given words. If the words are linearly independent, you'll get the same number of words back, otherwise you'll get fewer.
+     * @param {codewords.Codeword[]} words
+     * @returns {codewords.Codeword[]}
+     */
 	var generator_matrix = codewords.generator_matrix = function(words) {
 		var matrix = reduced_row_echelon_form(words);
 		matrix = matrix.filter(function(w){return !w.isZero()});
 		return matrix;
 	}
 
+    /** A parity check matrix for the given generating set (which should be linearly independent)
+     * @param {codewords.Codeword[]} basis
+     * @returns {codewords.Codeword[]}
+     */
 	var parity_check_matrix = codewords.parity_check_matrix = function(basis) {
 		var field_size = basis[0].field_size;
 		var g = reduced_row_echelon_form(basis);
@@ -438,6 +573,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return m;
 	}
 
+    /** A parity check matrix for the given generating set, with columns in lexicographic order.
+     * @param {codewords.Codeword[]} basis
+     * @returns {codewords.Codeword}
+     */
 	var lexicographic_parity_check_matrix = codewords.lexicographic_parity_check_matrix = function(basis) {
 		var field_size = basis[0].field_size;
 		var pcm = parity_check_matrix(basis);
@@ -475,6 +614,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return rows;
 	}
 
+    /** Encode `word` using Hamming's square code.
+     * @param {codewords.Codeword} words
+     * @returns {codewords.Codeword}
+     */
 	codewords.hamming_square_encode = function(words) {
 		var n = 2;
 		var out = [];
@@ -500,11 +643,15 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return new Codeword(out,2);
 	}
 
-	codewords.hamming_square_decode = function(words) {
+    /** Decode (and correct up to one error in) `word` using Hamming's square code.
+     * @param {codewords.Codeword} encoded_word
+     * @returns {codewords.Codeword}
+     */
+	codewords.hamming_square_decode = function(encoded_word) {
 		var n = 3;
 		var out = [];
-		for(var start=0;start<words.length;start+=n*n) {
-			var word = words.digits.slice(start,start+n*n);
+		for(var start=0;start<encoded_word.length;start+=n*n) {
+			var word = encoded_word.digits.slice(start,start+n*n);
 
 			var row_errors = [];
 			var column_errors = [];
@@ -532,7 +679,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return new Codeword(out,2);
 	};
 
-	// integer log_2
+	/** integer log_2
+     * @param {number} n
+     * @returns {number}
+     */
 	function log2(n) {
 		var i = 1;
 		var p = 0;
@@ -543,6 +693,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return p-1;
 	}
 
+    /** Encode `word` using the general Hamming code.
+     * @param {codewords.Codeword} word
+     * @returns {codewords.Codeword}
+     */
 	codewords.hamming_encode = function(word) {
 		var word_length = word.length;
 		var pow = Math.ceil(log2(word_length))+1;
@@ -571,6 +725,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return new Codeword(out,2);
 	};
 
+    /** Decode (and correct up to one error in) `word` using the general Hamming code.
+     * @param {codewords.Codeword} word
+     * @returns {codewords.Codeword}
+     */
 	codewords.hamming_decode = function(word) {
 		var word_length = word.length;
 		var pow = Math.ceil(log2(word_length));
@@ -614,7 +772,11 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return new Codeword(out,2);
 	}
 
-	/* pcm is a parity check matrix for the code, given as a list of codewords */
+    /** Compute the syndrome of the given word with respect to the given parity check matrix.
+     * @param {codewords.Codeword} word
+     * @param {codewords.Codeword[]} pcm
+     * @returns {codewords.Codeword}
+     */
 	var syndrome = codewords.syndrome = function(word,pcm) {
 		var word_length = word.length;
 		var field_size = word.field_size;
@@ -628,7 +790,11 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return new Codeword(digits,field_size);
 	}
 
-	/* Lexicographic parity check matrix for Hamming code Ham_p(r) */
+	/** Create a parity check matrix for the Hamming code `Ham_p(r)`. (`p` must be prime)
+     * @param {number} p
+     * @param {number} r
+     * @returns {codewords.Codeword[]}
+     */
 	var hamming_parity_check_matrix = codewords.hamming_parity_check_matrix = function(p,r) {
 		// each column starts with a 1
 		// every possible column appears once, and columns are in lexicographic order
@@ -673,7 +839,13 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return out;
 	}
 
-	/* Generating matrix for the p-ary Hamming code whose PCM has r rows */
+    /** Create a generating matrix for the Hamming code `Ham_p(r)`. (`p` must be prime)
+	 * Ham_p(r) is the p-ary Hamming code whose PCM has r rows
+     *
+     * @param {number} p
+     * @param {number} r
+     * @returns {codewords.Codeword}
+     */
 	var hamming_generating_matrix = codewords.hamming_generating_matrix = function(p,r) {
 		// Generate the parity-check matrix
 		var pcm = hamming_parity_check_matrix(p,r);
@@ -702,6 +874,16 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return gen;
 	}
 
+    /** A wrapper object for the code containing the given words.
+     * @constructor
+     * @memberof codewords
+     * @property {codewords.Codeword[]} words
+     * @property {number} length
+     * @property {number} word_length
+     * @property {number} field_size
+     *
+     * @param {codewords.Code} words
+     */
 	var Code = codewords.Code = function(words) {
 		this.words = words;
 		this.length = this.words.length;
@@ -709,17 +891,28 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		this.field_size = this.length>0 ? this.words[0].field_size : 0;
 	}
 	Code.prototype = {
+        /** String representation of the code - list all its words.
+         * @returns {string}
+         */
 		toString: function() {
 			return '{'+this.words.map(function(word){return word+''}).join(', ')+'}';
 		},
+        /** LaTeX representation of the code.
+         * @returns {string}
+         */
 		toLaTeX: function() {
 			return '\\{'+this.words.map(function(word){return word.toLaTeX()}).join(', ')+'\\}';
 		},
+        /** JME representation of the code.
+         * @returns {string}
+         */
 		toJME: function() {
 			return 'code(['+this.words.map(function(word){return word.toJME()}).join(', ')+'])';
 		},
 
-		/** Do this and b have exactly the same words?
+		/** Is this code the same as `code2`? True if they have exactly the same words.
+         * @param {codewords.Code} b
+         * @returns {boolean}
 		 */
 		eq: function(b) {
 			if(this.length!=b.length || this.field_size!=b.field_size) {
@@ -742,18 +935,25 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			return true;
 		},
 
-		contains: function(w) {
+        /** Does this code contain `word`?
+         * @param {codewords.Codeword} word
+         * @returns {boolean}
+         */
+		contains: function(word) {
 			for(var i=0;i<this.length;i++) {
-				if(this.words[i].eq(w)) {
+				if(this.words[i].eq(word)) {
 					return true;
 				}
 			}
 			return false;
 		},
 
-		/** This is equivalent to b if we can get to b by positional or symbolic permutations
+		/** If this code is equivalent to `code2`, return an object `{positional_permutation, symbolic_permutation}`. If not, return `null`.
+         * Two codes are equivalent if we can get from one to the other by a combination of positional and symbolic permutations.
+         * @param {codewords.Code} b
+         * @returns {object} {positional_permutation: number[], symbolic_permutation: number[][]}
 		 */
-		equivalent: function(b) {
+        find_equivalence: function(b) {
 			if(this.length!=b.length || this.field_size!=b.field_size) {
 				return false;
 			}
@@ -766,25 +966,39 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 				symbols.push(i);
 			}
 			var positional_permutations = Numbas.util.permutations(positions);
-			var symbolic_permutations = Numbas.util.permutations(symbols);
+            var l = [];
+            for(var i=0;i<this.word_length;i++) {
+                l.push(Numbas.util.permutations(symbols));
+            }
+			var symbolic_permutations = Numbas.util.product(l);
 
 			for(var i=0;i<positional_permutations.length;i++) {
 				for(var j=0;j<symbolic_permutations.length;j++) {
 					var c = this.positional_permutation(positional_permutations[i]).symbolic_permutation(symbolic_permutations[j]);
 					if(c.eq(b)) {
-						return true;
+						return {
+                            positional_permutation: positional_permutations[i],
+                            symbolic_permutation: symbolic_permutations[j]
+                        };
 					}
 				}
 			}
-			return false;
+			return null;
+        },
+
+        /** Is this code equivalent to `code2` - can you get from one to the other by performing positional and symbolic permutations on the digits of the codewords?
+         * @see {codewords.Code.find_equivalence}
+         * @param {codewords.Code} b
+         * @returns {boolean}
+         */
+		equivalent: function(b) {
+            var res = this.find_equivalence(b);
+            return res!==null;
 		},
 
-		contains: function(word) {
-			return this.words.reduce(function(got,word2) {
-				return got || word2.eq(word);
-			},false);
-		},
-
+        /** The minimum Hamming distance between any pair of words in this code.
+         * @returns {number}
+         */
 		minimum_distance: function() {
 			if(this.length==0) {
 				return 0;
@@ -801,6 +1015,9 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			return min;
 		},
 
+        /** Information rate of the code: `log(number of words)/(log(2)*word length)`
+         * @returns {number}
+         */
 		information_rate: function() {
 			if(this.words.length==0) {
 				return 0;
@@ -808,6 +1025,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			return Math.log(this.length)/Math.log(2)/this.words[0].length;
 		},
 
+        /** Perform a positional permutation on the words in the code. `order` is a list, where column `i` is sent to `order[i]`.
+         * @param {number[]} order
+         * @returns {codewords.Code}
+         */
 		positional_permutation: function(order) {
 			var words = this.words.map(function(word) {
 				var digits = [];
@@ -820,10 +1041,14 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 			return new Code(words,this.field_size);
 		},
 
-		symbolic_permutation: function(symbols) {
+        /** Perform a symbolic permutation on the words in the code. `symbols` is a list of permutations for each digit, where symbol `j` in position `i` is changed to `symbols[i][j]`.
+         * @param {number[][]} symbol_permutations
+         * @returns {codewords.Code}
+         */
+		symbolic_permutation: function(symbol_permutations) {
 			var words = this.words.map(function(word) {
-				var digits = word.digits.map(function(d) {
-					return symbols[d];
+				var digits = word.digits.map(function(d,i) {
+					return symbol_permutations[i][d];
 				});
 				return new Codeword(digits,word.field_size);
 			});
@@ -832,6 +1057,12 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		}
 	};
 
+    /** Hamming bound on the maximum number of codewords in a code with the given parameters.
+     * @param {number} field_size
+     * @param {number} word_length
+     * @param {number} errors_corrected
+     * @returns {number}
+     */
 	codewords.hamming_bound = function(field_size,word_length,errors_corrected) {
 		var sum = 0;
 		for(var k=0;k<=errors_corrected;k++) {
@@ -840,10 +1071,22 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 		return Math.floor(Math.pow(field_size,word_length)/sum);
 	}
 
+    /** Singleton bound on the maximum number of codewords in a code with the given parameters.
+     * @param {number} field_size
+     * @param {number} word_length
+     * @param {number} minimum_distance - the minimum Hamming distance between codewords
+     * @returns {number}
+     */
 	codewords.singleton_bound = function(field_size,word_length,minimum_distance) {
 		return Math.pow(field_size,word_length-minimum_distance+1);
 	}
 
+    /** Gilbert-Varshamov bound on the minimum number of codewords in a code with the given parameters.
+     * @param {number} field_size
+     * @param {number} word_length
+     * @param {number} minimum_distance - the minimum Hamming distance between codewords
+     * @returns {number}
+     */
 	codewords.gilbert_varshamov_bound = function(field_size,word_length,minimum_distance) {
 		var sum = 0;
 		for(var i=0;i<minimum_distance;i++) {
@@ -1156,7 +1399,8 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 
 	/** Marking scripts **/
 
-	/** Mark a list of codewords - check the answer syntax, then pass on a list of parsed codewords to the given function
+	/** To be used on a "match text pattern" part, where the student's answer is a list of codewords separated by commas. 
+     * Mark a list of codewords - check the answer syntax, then pass on a list of parsed codewords to the given function
 	 * @param {Numbas.Part} part
 	 * @param {number} field_size
 	 * @param {function} fn - marking logic, passed a list of codewords, and `this` is the part object
@@ -1178,6 +1422,11 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 	  fn.apply(part,[words]);
 	}
 
+    /** Validate a part where the student's answer is a list of codewords separated by commas.
+     * @see codewords.mark_codeword_set
+     * @param {Numbas.Part} part
+     * @returns {boolean}
+     */
 	codewords.validate_codeword_set = function(part) {
 		if(!part.correct_format) {
 			part.giveWarning('You have not written a valid answer. Your answer should be a list of codewords separated by commas.');
