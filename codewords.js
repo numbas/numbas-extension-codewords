@@ -1228,7 +1228,7 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
         for(var i=1;i<words.length;i++) {
             w = w.add(words[i]);
         }
-        return w;
+        return new TCodeword(w);
     },{unwrapValues: true}));
 
 	codewords.scope.addFunction(new funcObj('listval',[TCodeword,TNum],TNum,function(w,i) {
@@ -1260,7 +1260,7 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 	}));
 
 	codewords.scope.addFunction(new funcObj('random_combination',[TList],TCodeword,function(basis) {
-		return random_combination(basis);
+		return new TCodeword(random_combination(basis));
 	},{unwrapValues: true}));
 
 	codewords.scope.addFunction(new funcObj('set_generated_by',[TList],TList,function(basis) {
