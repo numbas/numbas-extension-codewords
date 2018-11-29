@@ -3,6 +3,8 @@ Linear codes extension for Numbas
 
 This extension provides a new data type and some functions to deal with linear codes.
 
+A [collection of questions created using this extension](https://numbas.mathcentre.ac.uk/exam/2785/coding-theory/) is available to reuse.
+
 JME data types
 --------------
 
