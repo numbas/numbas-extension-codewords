@@ -1211,6 +1211,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 	codewords.scope.addFunction(new funcObj('zero',[TNum,TNum],TCodeword,function(word_length,field_size) {
 		return zero_word(word_length,field_size);
 	}));
+      
+    codewords.scope.addFunction(new funcObj('field_size',[TCodeword],TNum,function(word) {
+      return word.field_size;
+    }));
 
 	codewords.scope.addFunction(new funcObj('latex',[TCodeword],TString,null, {
 		evaluate: function(args,scope) {
@@ -1416,6 +1420,14 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 	codewords.scope.addFunction(new funcObj('code',[TList],TCode,function(words) {
 		return new Code(words.map(function(tword){return tword.value}));
 	}));
+
+    codewords.scope.addFunction(new funcObj('field_size',[TCode],TNum,function(code) {
+      return code.field_size;
+    }));
+      
+    codewords.scope.addFunction(new funcObj('in',[TCodeword,TCode],TBool,function(word,code) {
+      return code.contains(word);
+    }));
 
 	codewords.scope.addFunction(new funcObj('allwords',[TCode],TList,function(code) {
 		return code.words.map(function(w){return new TCodeword(w)});
