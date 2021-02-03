@@ -238,7 +238,15 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
      */
 	Codeword.fromString = function(w,field_size) {
 		w = w || '';
+      	var ow = w;
+      	w = w.replace(/[, ]/g,'');
+      	if(!w.match(/^\d*$/)) {
+          throw(new Error(ow+" is not a valid codeword"));
+        }
 		var digits = w.split('').map(function(d){ return parseInt(d) });
+      	if(digits.some(function(d){ return d>=field_size; })) {
+          throw(new Error(ow+" is not a valid codeword"));
+        }
 		return new Codeword(digits,field_size);
 	}
     /** Comparison function to sort codewords lexicographically.
