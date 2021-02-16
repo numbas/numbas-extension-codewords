@@ -962,6 +962,21 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
             return 'code(['+this.words.map(function(word){return word.toJME()}).join(', ')+'])';
         },
 
+        sort_words: function() {
+            if(this.sorted_words===undefined) {
+                var words = this.words.slice();
+                function compare_words(a,b) {
+                    a=a.toString();
+                    b=b.toString(); 
+                    return a<b ? -1 : a>b ? 1 : 0;
+                }
+                words.sort(compare_words);
+                this.sorted_words = words;
+                
+            }
+            return this.sorted_words;
+        },
+
         /** Is this code the same as `code2`? True if they have exactly the same words.
          * @param {codewords.Code} b
          * @returns {boolean}
@@ -970,17 +985,10 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
             if(this.length!=b.length || this.field_size!=b.field_size) {
                 return false;
             }
-            var a_words = this.words.slice();
-            var b_words = b.words.slice();
-            function compare_words(a,b) {
-                a=a.toString();
-                b=b.toString(); 
-                return a<b ? -1 : a>b ? 1 : 0;
-            }
-            a_words.sort(compare_words);
-            b_words.sort(compare_words);
+            this.sort_words();
+            b.sort_words();
             for(var i=0;i<this.length;i++) {
-                if(!a_words[i].eq(b_words[i])) {
+                if(!this.sorted_words[i].eq(b.sorted_words[i])) {
                     return false;
                 }
             }
@@ -1009,15 +1017,17 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
             if(this.length!=b.length || this.field_size!=b.field_size) {
                 return false;
             }
+
             var positions = [];
             for(var i=0;i<this.word_length;i++) {
                 positions.push(i);
             }
+            var positional_permutations = Numbas.util.permutations(positions);
+
             var symbols = [];
             for(var i=0;i<this.field_size;i++) {
                 symbols.push(i);
             }
-            var positional_permutations = Numbas.util.permutations(positions);
             var p = [];
             for(var i=0;i<this.word_length;i++) {
                 p.push(Numbas.util.permutations(symbols));
@@ -1035,7 +1045,49 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
                     }
                 }
             }
-            return null;
+            return false;
+        },
+
+        find_positional_equivalence: function(b) {
+            if(this.length!=b.length || this.field_size!=b.field_size) {
+                return false;
+            }
+            var positions = [];
+            for(var i=0;i<this.word_length;i++) {
+                positions.push(i);
+            }
+            var positional_permutations = Numbas.util.permutations(positions);
+
+            for(var i=0;i<positional_permutations.length;i++) {
+                var c = this.positional_permutation(positional_permutations[i]);
+                if(c.eq(b)) {
+                    return positional_permutations[i];
+                }
+            }
+            return false;
+        },
+
+        find_symbolic_equivalence: function(b) {
+            if(this.length!=b.length || this.field_size!=b.field_size) {
+                return false;
+            }
+            var symbols = [];
+            for(var i=0;i<this.field_size;i++) {
+                symbols.push(i);
+            }
+            var p = [];
+            for(var i=0;i<this.word_length;i++) {
+                p.push(Numbas.util.permutations(symbols));
+            }
+            var symbolic_permutations = Numbas.util.product(p);
+
+            for(var i=0;i<symbolic_permutations.length;i++) {
+                var c = this.symbolic_permutation(symbolic_permutations[i]);
+                if(c.eq(b)) {
+                    return symbolic_permutations[i];
+                }
+            }
+            return false;
         },
 
         /** Is this code equivalent to `code2` - can you get from one to the other by performing positional and symbolic permutations on the digits of the codewords?
@@ -1046,6 +1098,65 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
         equivalent: function(b) {
             var res = this.find_equivalence(b);
             return res!==null;
+        },
+
+
+        /** Produce a table of the Hamming distances between words in the code.
+         *
+         * @returns {Array.<Array.<number>>} - `[i][j]` is the distance between `this.words[i]` and `this.words[j]`.
+         */
+        hamming_distance_table: function() {
+            var code = this;
+            var table = [];
+            code.words.forEach(function(w) {
+                var row = [];
+                table.push(row);
+                code.words.forEach(function(w2) {
+                    var d = codewords.hamming_distance(w,w2);
+                    row.push(d)
+                })
+            });
+            return table;
+        },
+
+        find_distance_equivalence: function(b) {
+            var a = this;
+            var ta = a.hamming_distance_table();
+            var tb = b.hamming_distance_table();
+            function count(table) {
+                var counts = [];
+                table.forEach(function(row) {
+                    row.forEach(function(n) {
+                        if(counts[n]===undefined) {
+                            counts[n] = 0;
+                        }
+                        counts[n] += 1;
+                    })
+                })
+                return counts;
+            }
+            if(!Numbas.util.arraysEqual(count(ta),count(tb))) {
+                return false;
+            }
+
+
+            var positions = a.words.map(function(w,i) { return i; });
+            var permutations = Numbas.util.permutations(positions);
+
+            return permutations.find(function(p) {
+                for(var i=0;i<a.words.length;i++) {
+                    for(var j=0;j<i;j++) {
+                        if(ta[p[i]][p[j]] != tb[i][j]) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            });
+        },
+
+        distance_equivalent: function(b) {
+            return this.find_distance_equivalence(b);
         },
 
         /** The minimum Hamming distance between any pair of words in this code.
@@ -1191,6 +1302,7 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
     var funcObj = Numbas.jme.funcObj;
     var TString = Numbas.jme.types.TString;
     var TNum = Numbas.jme.types.TNum;
+    var TDict = Numbas.jme.types.TDict;
     var TList = Numbas.jme.types.TList;
     var TBool = Numbas.jme.types.TBool;
     var TMatrix = Numbas.jme.types.TMatrix;
@@ -1462,6 +1574,22 @@ Numbas.addExtension('codewords',['math','jme','jme-display'],function(codewords)
 
     codewords.scope.addFunction(new funcObj('equivalent',[TCode,TCode],TBool,function(a,b) {
         return a.equivalent(b);
+    }));
+
+    codewords.scope.addFunction(new funcObj('find_equivalence',[TCode,TCode],TDict, function(a,b) {
+        return a.find_equivalence(b) || new Numbas.jme.types.TNothing();
+    },{unwrapValues: true}));
+
+    codewords.scope.addFunction(new funcObj('find_positional_equivalence',[TCode,TCode],TDict, function(a,b) {
+        return a.find_positional_equivalence(b) || new Numbas.jme.types.TNothing();
+    },{unwrapValues: true}));
+
+    codewords.scope.addFunction(new funcObj('find_symbolic_equivalence',[TCode,TCode],TDict, function(a,b) {
+        return a.find_symbolic_equivalence(b) || new Numbas.jme.types.TNothing();
+    },{unwrapValues: true}));
+
+    codewords.scope.addFunction(new funcObj('distance_equivalent',[TCode,TCode],TBool,function(a,b) {
+        return a.distance_equivalent(b);
     }));
 
     codewords.scope.addFunction(new funcObj('hamming_bound',[TNum,TNum,TNum],TNum,codewords.hamming_bound));

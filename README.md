@@ -215,7 +215,31 @@ Permute the symbols in code's words, following the given order. `symbols` is a l
 
 ### `equivalent(code1,code2)`
 
-Can code2 be obtained from code1 by a combination of positional and symbolic permutations?
+Can `code2` be obtained from `code1` by a combination of positional and symbolic permutations?
+
+### `find_equivalence(code1,code2)`
+
+If `code1` is equivalent to `code2`, find a combination of positional and symbolic permutations that maps `code1` to `code2`.
+
+Returns a dictionary with keys `"positional_permutation"` and `"symbolic_permutation"` when the codes are equivalent, and `nothing` if they're not.
+
+### `find_positional_equivalence(code1,code2)`.
+
+If `code1` is positionally equivalent to `code2`, find a positional permutation that maps `code1` to `code2`.
+
+Returns a list representing a permutation of codeword digits when the codes are positionally equivalent, and `nothing` if they're not.
+
+### `find_symbolic_equivalence(code1,code2)`.
+
+If `code1` is symbolically equivalent to `code2`, find a symbolic permutation that maps `code1` to `code2`.
+
+Returns a list representing a permutation of the symbols for each codeword digits when the codes are symbolically equivalent, and `nothing` if they're not.
+
+### `distance_equivalent(code1,code2)`
+
+Is there an isomorphism between the Hamming distance tables of `code1` and `code2`?
+
+Returns `true` if there is a permutation of the rows and columns of the Hamming distance table of `code1` that produces the table for `code2`.
 
 ### `hamming_bound(field_size,word_length,errors_corrected)`
 
